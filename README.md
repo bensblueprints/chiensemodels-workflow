@@ -104,3 +104,23 @@ Code and documentation: [MIT](LICENSE), copyright © 2026 Chinesemodels. Based o
 | Agent workflow | Included AGENTS.md, setup runbook, skill and CLI; a user-supplied coding agent performs visual QA |
 
 Fast face mesh skips both depth and SAM. Combined mode uses depth + SAM + facial landmarks. All modes embed pitched vocals before generation and restore the original source soundtrack afterward.
+
+---
+
+## The working recipe and fully-local build
+
+**Read [`docs/WORKING-RECIPE.md`](docs/WORKING-RECIPE.md)** — the exact prompts
+that preserve motion and voice, the three steps (pitch/embed → generate → restore
+original audio), and the provider quirks that decide success.
+
+Key points:
+- Use a **direct replacement prompt** ("Replace X with Y, keep everything else"),
+  not a scene-script. Scene-scripts regenerate the whole clip and lose your motion
+  and your audio.
+- The three Replicate calls (depth, SAM, Demucs) now **fall back to local models**
+  when `REPLICATE_API_TOKEN` is absent, via `local_models.py`. No Replicate key needed.
+- `bin/rubberband.bat` shims the `rubberband` CLI with ffmpeg's `rubberband` filter
+  on Windows, so `doctor.py` passes without a rubberband install.
+- For **Atlas Cloud** generation, omit `omni_reference_task_type` and use a source
+  **≥ 4 s** (both are required or the edit is rejected with a misleading
+  ratio/duration error).

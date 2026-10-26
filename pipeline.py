@@ -54,6 +54,9 @@ def depth_hf(src,dst):
 
 def depth_replicate(src,dst,model_name="lucataco/depth-anything-video"):
     token=os.getenv('REPLICATE_API_TOKEN')
+    if not token:
+        from local_models import depth_local
+        return depth_local(src,dst)
     if not token:raise ValueError('Replicate fallback requires REPLICATE_API_TOKEN in the server environment.')
     # Resolve live model schema instead of assuming an input field.
     headers={'Authorization':f'Bearer {token}'}

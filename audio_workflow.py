@@ -26,7 +26,9 @@ def separate(src,folder,status=print):
     if (folder/'audio-manifest.json').exists():return
     status('Audio · extracting original track');original=read_audio(src);write_audio(folder/'original-audio.wav',original)
     token=os.getenv('REPLICATE_API_TOKEN')
-    if not token:raise ValueError('REPLICATE_API_TOKEN is required for audio separation.')
+    if not token:
+        from local_models import separate_local
+        return separate_local(src,folder,status)
     headers={'Authorization':'Bearer '+token}
     with (folder/'original-audio.wav').open('rb') as f:r=requests.post('https://api.replicate.com/v1/files',headers=headers,files={'content':f},timeout=120)
     r.raise_for_status();url=r.json()['urls']['get'];status('Audio · separating vocals and original music')
