@@ -9,7 +9,7 @@ All neural inference in the default path is hosted. No weight downloads are incl
 | Depth alternative | [chenxwh/depth-any-video](https://replicate.com/chenxwh/depth-any-video) | explicitly selected alternative model |
 | Depth alternative | [Video-Depth-Anything Space](https://huggingface.co/spaces/depth-anything/Video-Depth-Anything) | public GPU quota/availability; optional HF_TOKEN |
 | Segmentation | [lucataco/sam3-video](https://replicate.com/lucataco/sam3-video) | pinned version `408f82fc20c300aac5d61d2e34ddb34cd0181e810e9f609d250aed14d5f81269`; `video`, `prompt`, `mask_only=true`, `return_zip=true` |
-| Generation | Chiensemodels Seedance 2.5 (or Kling) | Edit or multi_reference; draft then approved 1080p; set `CHIENSEMODELS_MODEL` |
+| Generation | Chinesemodels Seedance 2.5 (or Kling 4) | reference-to-video edit task; draft at `CHINESEMODELS_PREVIEW_RESOLUTION`, approved final at `CHINESEMODELS_RESOLUTION`; set `CHINESEMODELS_MODEL` |
 | Pitch | Rubber Band CLI | +3 semitones, time ratio 1 |
 | Video/audio IO | PyAV / FFmpeg libraries | normalization, compositing, AAC input vocals, original audio packet remux |
 
@@ -17,6 +17,6 @@ The pinned SAM and Demucs versions and the depth model schema were verified thro
 
 The [SAM3-Video Hugging Face Space](https://huggingface.co/spaces/linoyts/SAM3-Video) was an earlier exploration; it is not the active raw-mask implementation. Never describe a green visualization overlay as a raw mask. An RGB segmentation retry is a deliberate repair, not a different depth color treatment.
 
-Buy your Seedance or Kling API key at [chiensemodels.ai](https://chiensemodels.ai). Generation endpoint paths and account limits are documented in your Chiensemodels dashboard; confirm them against `docs/CHIENSEMODELS-API.md` and `seedance_bridge.py` before first use.
+Buy your Seedance or Kling API key at [chinesemodels.ai](https://chinesemodels.ai). Generation endpoint paths and account limits are documented in your Chinesemodels dashboard; confirm them against `docs/CHINESEMODELS-API.md` and `seedance_bridge.py` before first use.
 
 `requirements.txt` records versions from the development environment. Setup installs them into a clean venv; the package's local tests are also runnable using a compatible existing environment. Hosted availability, price and access are account-dependent; no free-inference claim is made. Local self-hosting of model weights is not configured here.

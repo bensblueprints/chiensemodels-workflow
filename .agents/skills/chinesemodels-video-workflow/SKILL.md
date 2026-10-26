@@ -1,9 +1,9 @@
 ---
-name: chiensemodels-video-workflow
-description: Run this project's depth, SAM 3 and Chiensemodels video subject replacement workflow, including full-clip mask review, draft generation, retrieval, and approved HD export.
+name: chinesemodels-video-workflow
+description: Run this project's depth, SAM 3 and Chinesemodels video subject replacement workflow, including full-clip mask review, draft generation, retrieval, and approved HD export.
 ---
 
-Read the project root AGENTS.md and docs/AGENT-OPERATIONS.md before running a job. Resolve the root as the folder containing workflow.py, not a machine-specific path. Consult docs/CHIENSEMODELS-API.md for request routing and recovery and docs/MEDIA-HOSTING.md before changing upload providers.
+Read the project root AGENTS.md and docs/AGENT-OPERATIONS.md before running a job. Resolve the root as the folder containing workflow.py, not a machine-specific path. Consult docs/CHINESEMODELS-API.md for request routing and recovery and docs/MEDIA-HOSTING.md before changing upload providers.
 
 Use workflow.py and the local UI; do not recreate credentials or hardcode prior users' media, subjects or request IDs. Carry authorized preparation and collection through to the final preview. Full-clip visual mask QA is mandatory before any generation; if you cannot inspect the video, ask the user to review it. Fix coverage failures with raw masks and, when needed, original-RGB segmentation; preserve the depth model's colors. Approval is invalid after artifact changes.
 

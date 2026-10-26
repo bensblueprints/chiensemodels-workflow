@@ -1,32 +1,52 @@
-import tempfile,unittest
+import tempfile
+import unittest
 from pathlib import Path
-from unittest.mock import Mock,patch
-from media_host import upload
+from unittest.mock import Mock, patch
 
-class HostingTests(unittest.TestCase):
- def test_tmpfiles_uses_actual_download_link(self):
-  with tempfile.TemporaryDirectory() as d:
-   path=Path(d)/'input.mp4';path.write_bytes(b'video')
-   posted=Mock();posted.json.return_value={'data':{'url':'https://tmpfiles.org/123/input.mp4'}}
-   page=Mock();page.text='<a href="https://tmpfiles.org/dl/123/extra-token/input.mp4">Download</a>'
-   media=Mock();media.headers={'Content-Type':'video/mp4'};media.iter_content.return_value=iter([b'\x00\x00\x00 ftypisom'])
-   context=Mock();context.__enter__=Mock(return_value=media);context.__exit__=Mock(return_value=False)
-   with patch('media_host.setting',return_value='tmpfiles'),patch('media_host.requests.post',return_value=posted),patch('media_host.requests.get',side_effect=[page,context]) as get:
-    url=upload(path)
-    self.assertEqual(url,'https://tmpfiles.org/dl/123/extra-token/input.mp4')
-    self.assertEqual(get.call_args.args[0],url)
+from media_host import upload, kind_for
 
-class FallbackTests(unittest.TestCase):
- def test_primary_failure_uses_configured_fallback(self):
-  def settings(k,d=''):return {'MEDIA_HOST':'tmpfiles','MEDIA_HOST_FALLBACKS':'catbox'}.get(k,d)
-  with patch('media_host.setting',side_effect=settings),patch('media_host.time.sleep'),patch('media_host._upload_once',side_effect=[ValueError('bad'),ValueError('bad'),'https://files.catbox.moe/test.mp4']) as send:
-   self.assertEqual(upload('test.mp4'),'https://files.catbox.moe/test.mp4')
-   self.assertEqual([c.args[1] for c in send.call_args_list],['tmpfiles','tmpfiles','catbox'])
- def test_disabled_fallback_does_not_switch(self):
-  def settings(k,d=''):return {'MEDIA_HOST':'tmpfiles','MEDIA_HOST_FALLBACKS':''}.get(k,d)
-  with patch('media_host.setting',side_effect=settings),patch('media_host.time.sleep'),patch('media_host._upload_once',side_effect=ValueError('bad')) as send:
-   with self.assertRaises(RuntimeError):upload('test.mp4')
-   self.assertEqual(send.call_count,2)
- def test_success_never_calls_fallback(self):
-  with patch('media_host.setting',side_effect=lambda k,d='':d),patch('media_host._upload_once',return_value='https://tmpfiles.org/dl/test.mp4') as send:
-   upload('test.mp4');self.assertEqual(send.call_count,1)
+
+class ReferenceMediaTests(unittest.TestCase):
+    def test_upload_returns_provider_url_and_sends_role(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / 'composite.mp4'
+            path.write_bytes(b'video')
+            response = Mock(status_code=200)
+            response.json.return_value = {'url': 'https://chinesemodels.ai/api/reference-media/abc.mp4'}
+            with patch('media_host.credential', return_value='sk-cm-test'), \
+                 patch('media_host.setting', side_effect=lambda k, d='': {'CHINESEMODELS_BASE_URL': 'https://chinesemodels.ai',
+                                                                          'CHINESEMODELS_MODEL': 'bytedance/seedance-2.5/reference-to-video'}.get(k, d)), \
+                 patch('media_host.requests.post', return_value=response) as post:
+                url = upload(path)
+            self.assertEqual(url, 'https://chinesemodels.ai/api/reference-media/abc.mp4')
+            self.assertEqual(post.call_args.args[0], 'https://chinesemodels.ai/api/reference-media')
+            self.assertEqual(post.call_args.kwargs['data']['kind'], 'video')
+            self.assertEqual(post.call_args.kwargs['data']['model'], 'bytedance/seedance-2.5/reference-to-video')
+            self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'Bearer sk-cm-test')
+
+    def test_kind_splits_video_from_image(self):
+        self.assertEqual(kind_for('composite.MP4'), 'video')
+        self.assertEqual(kind_for('character.webp'), 'image')
+
+    def test_error_status_raises_before_any_generation(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / 'composite.mp4'
+            path.write_bytes(b'video')
+            response = Mock(status_code=413, text='too large')
+            with patch('media_host.credential', return_value='sk-cm-test'), \
+                 patch('media_host.setting', return_value='https://chinesemodels.ai'), \
+                 patch('media_host.requests.post', return_value=response):
+                with self.assertRaises(RuntimeError):
+                    upload(path)
+
+    def test_non_https_url_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / 'composite.mp4'
+            path.write_bytes(b'video')
+            response = Mock(status_code=200)
+            response.json.return_value = {'url': 'http://insecure.example/x.mp4'}
+            with patch('media_host.credential', return_value='sk-cm-test'), \
+                 patch('media_host.setting', return_value='https://chinesemodels.ai'), \
+                 patch('media_host.requests.post', return_value=response):
+                with self.assertRaises(RuntimeError):
+                    upload(path)

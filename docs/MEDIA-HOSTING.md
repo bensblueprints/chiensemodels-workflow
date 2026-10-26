@@ -1,19 +1,34 @@
-# Media hosting
+# Media upload
 
-Chiensemodels must fetch direct HTTPS media. Replicate preprocessing uses Replicate's `/v1/files` upload API with your token. Chiensemodels references use the selected public host below. URLs and request bodies stay in each local run; do not share run folders with the clean project.
+ChineseModels must be able to fetch the prepared video and every reference
+image. The workflow registers each file with ChineseModels' own reference-media
+store and passes the returned URL to the model — there is no third-party host and
+no storage account to configure.
 
-## Tmpfiles (default)
+## Reference media — POST /api/reference-media
 
-`MEDIA_HOST=tmpfiles`. No account key required. Adapter POSTs multipart `file` and `expire=21600` (six hours) to `https://tmpfiles.org/api/v1/upload`, reads the response download page and extracts its actual `/dl/…` link (including host-generated path components), then verifies that it returns nonempty non-HTML bytes. Current documented maximum is 100 MB. Reference: [Tmpfiles API](https://tmpfiles.org/api).
+`media_host.upload(path)` sends multipart `file`, `kind` (`video` for
+`.mp4/.mov/.webm`, otherwise `image`) and `model`, authenticated with your
+`sk-cm-…` key, and returns the `url` from the response.
 
-Temporary files can disappear before a long queue finishes. Re-upload only for a deliberate new submission, after checking whether the original request completed. Do not requeue blindly.
+What gets uploaded per job:
 
-## Catbox
+- the **colored-depth composite** with the +3-semitone isolated vocals embedded
+  (the source video the model edits), and
+- each **character reference** image or video.
 
-Set `MEDIA_HOST=catbox`. Optionally set your own `CATBOX_USERHASH` from your account. Multipart POST to `https://catbox.moe/user/api.php` with `reqtype=fileupload`, optional `userhash`, and `fileToUpload`. The response is a direct URL. Reference: [Catbox API](https://catbox.moe/tools.php).
+Uploads run in parallel (up to three at a time). A failed upload raises before
+any generation is quoted or submitted, so it can never spend credits.
 
-Both hosts expose uploaded files via public URLs. Use them only for media you intend to share with these services. For private storage, replace `media_host.upload` with your own signed-URL uploader whose expiry covers the full generation queue. No storage credentials are included.
+## Why there is no external host any more
 
-## Configured automatic fallback
+The original workflow uploaded to Tmpfiles/Catbox because the previous provider
+needed public URLs and had no storage of its own. ChineseModels provides the
+reference-media store, so the Tmpfiles/Catbox adapters and their
+`MEDIA_HOST`, `MEDIA_HOST_FALLBACKS` and `CATBOX_USERHASH` settings were removed.
 
-`MEDIA_HOST` selects the primary (`tmpfiles` by default). `MEDIA_HOST_FALLBACKS=catbox` tries Catbox after two failed primary attempts. Set the fallback value to empty to prohibit switching. Both routes provide public URLs; Catbox is persistent. The uploader warns when switching hosts and checks the returned media URL. It never retries model generation. Failed or expired media must be freshly uploaded before a separately authorized generation retry.
+## Expiry
+
+The provider stores reference media itself, so there are no expiring third-party
+links to refresh. Quote ids do expire, though — a stale quote is rejected and
+must be re-requested rather than reused.

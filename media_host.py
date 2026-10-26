@@ -1,50 +1,52 @@
-"""Public, direct media URLs for Chiensemodels. Configured fallback hosts are tried only for media hosting failures."""
-from pathlib import Path
-from urllib.parse import urlparse
-import requests,re,html,time,warnings
-from config import setting
+"""Upload prepared media to ChineseModels' reference-media store.
 
-def _upload_once(path,host):
-    path=Path(path)
-    with path.open('rb') as f:
-        if host=='tmpfiles':
-            if path.stat().st_size>100_000_000:raise ValueError('Tmpfiles limit is 100 MB; choose another host or reduce the reference.')
-            r=requests.post('https://tmpfiles.org/api/v1/upload',files={'file':(path.name,f)},data={'expire':21600},timeout=180)
-            r.raise_for_status();url=r.json()['data']['url']
-            parsed=urlparse(url)
-            if parsed.hostname!='tmpfiles.org':raise ValueError('Unexpected temporary host response')
-            page=requests.get(url,timeout=60)
-            page.raise_for_status()
-            matches=re.findall(r'https://tmpfiles\.org/dl/[^\"\'<> ]+',page.text)
-            if not matches:raise ValueError('Tmpfiles download page did not expose a direct media link')
-            url=html.unescape(matches[0])
-        elif host=='catbox':
-            data={'reqtype':'fileupload'}
-            if setting('CATBOX_USERHASH'):data['userhash']=setting('CATBOX_USERHASH')
-            r=requests.post('https://catbox.moe/user/api.php',data=data,files={'fileToUpload':(path.name,f)},timeout=180)
-            r.raise_for_status();url=r.text.strip()
-        else:raise ValueError('MEDIA_HOST must be tmpfiles or catbox')
-    if not url.startswith('https://'):raise ValueError('Host did not return an HTTPS media URL')
-    with requests.get(url,stream=True,timeout=60) as check:
-        check.raise_for_status()
-        if 'text/html' in check.headers.get('Content-Type',''):raise ValueError('Media URL returned a page, not a media file')
-        first=next(check.iter_content(256),b'')
-        if not first or first.lstrip().lower().startswith((b'<!doctype',b'<html')):raise ValueError('Empty or HTML media response')
-    return url
+Verified live against https://chinesemodels.ai (2026-10-26):
+
+  POST /api/reference-media   multipart(file, kind, model)  ->  {"url": "https://…"}
+  Auth: Authorization: Bearer sk-cm-…
+
+Every prepared file the generation step needs (the colored-depth composite and
+each character reference) is registered here first, so the model receives a
+reachable HTTPS URL. No third-party host is involved.
+"""
+from pathlib import Path
+import mimetypes
+import requests
+from config import credential, setting
+
+VIDEO_EXTS = {'.mp4', '.mov', '.webm'}
+
+
+def base():
+    return setting('CHINESEMODELS_BASE_URL', 'https://chinesemodels.ai').rstrip('/')
+
+
+def model():
+    return setting('CHINESEMODELS_MODEL', 'bytedance/seedance-2.5/reference-to-video')
+
+
+def kind_for(path):
+    return 'video' if Path(path).suffix.lower() in VIDEO_EXTS else 'image'
 
 
 def upload(path):
-    """Retry hosting only; never retries a paid model request."""
-    primary=setting('MEDIA_HOST','tmpfiles')
-    fallback=setting('MEDIA_HOST_FALLBACKS','catbox')
-    hosts=list(dict.fromkeys([primary]+[h.strip() for h in fallback.split(',') if h.strip()]))
-    if any(h not in ['tmpfiles','catbox'] for h in hosts):raise ValueError('Supported media hosts: tmpfiles, catbox')
-    errors=[]
-    for host in hosts:
-        for attempt in range(2):
-            try:return _upload_once(path,host)
-            except (requests.RequestException,ValueError,KeyError,StopIteration) as exc:
-                errors.append(host+': '+type(exc).__name__)
-                if attempt==0:time.sleep(1)
-        warnings.warn('Media upload failed on '+host+'; trying next configured host if available.')
-    raise RuntimeError('All configured media hosts failed ('+', '.join(errors)+'). No generation was submitted. Check connectivity or choose another host.')
+    """Register one file and return its public HTTPS URL."""
+    path = Path(path)
+    mime = mimetypes.guess_type(path.name)[0] or 'application/octet-stream'
+    with path.open('rb') as f:
+        r = requests.post(
+            base() + '/api/reference-media',
+            headers={'Authorization': 'Bearer ' + credential('CHINESEMODELS_API_KEY')},
+            files={'file': (path.name, f, mime)},
+            data={'kind': kind_for(path), 'model': model()},
+            timeout=300, allow_redirects=False,
+        )
+    if r.status_code >= 400:
+        raise RuntimeError(f'ChineseModels reference-media upload failed ({r.status_code}): {r.text[:300]}')
+    try:
+        url = r.json()['url']
+    except (ValueError, KeyError, TypeError):
+        raise RuntimeError(f'ChineseModels reference-media returned no URL: {r.text[:300]}')
+    if not isinstance(url, str) or not url.startswith('https://'):
+        raise RuntimeError('ChineseModels returned a non-HTTPS media URL')
+    return url

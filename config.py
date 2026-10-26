@@ -13,12 +13,7 @@ def load_env():
 
 def setting(name,default=''):
     load_env()
-    value=os.getenv(name,default)
-    if name=='CHIENSEMODELS_WEBHOOK_URL' and not value:
-        import json
-        try:value=json.loads((ROOT/'.runtime-webhook.json').read_text())['url']
-        except (OSError,ValueError,KeyError):pass
-    return value
+    return os.getenv(name,default)
 
 def credential(name):
     value=setting(name)

@@ -4,36 +4,36 @@ The user can ask an existing coding agent to carry out this runbook. No addition
 
 ## 1. Detect and install prerequisites
 
-- Detect OS, architecture, Python version, available package manager, and `rubberband` and `cloudflared` executables. Python must be 3.12 or later. Prefer an already compatible interpreter; `PYTHON=python3.14 bash setup.sh` selects one explicitly.
-- macOS with Homebrew: install missing Python and Rubber Band using `brew install python rubberband cloudflared`. Do not reinstall components already present.
+- Detect OS, architecture, Python version, available package manager, and the `rubberband` executable. Python must be 3.12 or later. Prefer an already compatible interpreter; `PYTHON=python3.14 bash setup.sh` selects one explicitly.
+- macOS with Homebrew: install missing Python and Rubber Band using `brew install python rubberband`. Do not reinstall components already present.
 - Ubuntu/Debian/WSL: install missing components using `sudo apt update` then `sudo apt install python3 python3-venv python3-pip rubberband-cli`. Confirm Python is >=3.12; older distributions need a supported Python installation before continuing.
 - Native Windows: use WSL2 Ubuntu for this package's Bash launch scripts. If WSL is not installed, tell the user a system installation/restart is required and guide them through it. Native PowerShell setup has not been tested.
 - If no package manager exists, guide the user to the official installation: [Homebrew](https://brew.sh), [Python](https://www.python.org/downloads/), or [WSL](https://learn.microsoft.com/windows/wsl/install). Respect the host's approval requirements for system changes; never ask for or handle their administrator password.
 
 Run `bash setup.sh`. It creates an isolated environment and preserves existing credentials. If pinned dependencies fail to install on the platform, report the exact failing package; do not silently substitute untested versions or claim setup success.
 
-Install cloudflared from its [official downloads](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) if not using an existing public callback. Use the correct OS/CPU package. The launcher creates a temporary tunnel to a callback-only receiver, never to the application or runs directory. No Cloudflare account is required for a Quick Tunnel; its URL changes each launch. See [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
+No tunnel, public URL or callback receiver is needed. Chinesemodels generation is submitted with a quote and then polled to completion, so the app only ever talks outward. Do not install cloudflared and do not expose the UI or the runs directory.
 
 For the complete setup, install Python 3.12 if absent and run `bash setup-face-mesh.sh`. This enables both face-mesh modes in an isolated environment. On macOS use `brew install python@3.12` when needed. Verify with `.venv/bin/python doctor.py --mesh`; do not report all three modes ready if the worker check fails. The face model downloads on first processing, so this import check does not prove model download access.
 
 ## 2. Configure the user's accounts
 
-Create `.env` from `.env.example` only if absent. Open it in the user's editor and ask them to enter their own Chiensemodels and Replicate keys there. Never request keys in chat, print values, copy credentials from another project, or commit `.env`.
+Create `.env` from `.env.example` only if absent. Open it in the user's editor and ask them to enter their own Chinesemodels and Replicate keys there. Never request keys in chat, print values, copy credentials from another project, or commit `.env`.
 
-- Chiensemodels: <https://chiensemodels.ai> (buy a Seedance or Kling API key here; get the key from the dashboard)
+- Chinesemodels: <https://chinesemodels.ai> (buy a Seedance or Kling API key here; get the key from the dashboard)
 - Replicate: https://replicate.com/account/api-tokens
 - Hugging Face token is optional for the alternative depth provider.
-- Default media host is Tmpfiles (no key). Catbox is optional; see MEDIA-HOSTING.md. Explain that the selected media host receives public-URL uploads when they generate.
+- Prepared video and reference media are uploaded to Chinesemodels' own reference-media store; there is no third-party host to configure. See MEDIA-HOSTING.md.
 
-After launch, run `.venv/bin/python doctor.py --require-keys`. Exit 2 means keys or the required callback are missing. A configured key does not prove balance or API access. Do not make billed requests to test setup.
+After launch, run `.venv/bin/python doctor.py --require-keys`. Exit 2 means a required key is missing. A configured key does not prove balance or API access. Do not make billed requests to test setup.
 
 ## 3. Validate locally
 
 Run `.venv/bin/python -m unittest discover -s tests` and `.venv/bin/python test_composite.py`. Neither should call remote models. Check dependencies with `doctor.py`.
 
-Launch `bash start.command` (starts the callback-only tunnel automatically if cloudflared is installed and no explicit webhook is set) in a persistent terminal. If 8770 is occupied, leave the other service alone and use `PORT=8771 bash start.command` (or another free port). Do not kill unrelated processes.
+Launch `bash start.command` in a persistent terminal. If 8770 is occupied, leave the other service alone and use `PORT=8771 bash start.command` (or another free port). Do not kill unrelated processes.
 
-Open the chosen localhost URL. Verify `/health` responds, the UI loads, and all three `/static/companions/*.webp` files load. Verify `.venv/bin/python doctor.py --require-keys` now. Keep the server and callback tunnel running and report the exact URL. A failed command is not a successful installation.
+Open the chosen localhost URL. Verify `/health` responds, the UI loads, and all three `/static/companions/*.webp` files load. Verify `.venv/bin/python doctor.py --require-keys` now. Keep the server running and report the exact URL. A failed command is not a successful installation.
 
 ## 4. Handoff
 

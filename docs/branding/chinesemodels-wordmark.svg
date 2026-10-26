@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="64" viewBox="0 0 360 64" role="img" aria-label="Chinesemodels">
+  <rect width="360" height="64" rx="14" fill="#0f1020"/>
+  <circle cx="32" cy="32" r="12" fill="none" stroke="#c5bdff" stroke-width="3"/>
+  <circle cx="44" cy="32" r="12" fill="none" stroke="#8ef0d0" stroke-width="3" opacity="0.8"/>
+  <text x="72" y="41" font-family="Schibsted Grotesk, Space Grotesk, Segoe UI, sans-serif" font-size="28" font-weight="800" fill="#f4f4f7" letter-spacing="-0.8">Chinesemodels</text>
+</svg>

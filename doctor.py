@@ -18,19 +18,18 @@ def main():
         print('Face mesh worker: '+('OK' if ready else 'MISSING — run bash setup-face-mesh.sh'))
         failed=failed or not ready
     missing=[]
-    for key in ['CHIENSEMODELS_API_KEY','REPLICATE_API_TOKEN']:
+    for key in ['CHINESEMODELS_API_KEY','REPLICATE_API_TOKEN']:
         value=setting(key).strip()
         valid=bool(value) and not any(x in value.lower() for x in ['your_key','your_api','replace_me','placeholder'])
         print(key+': '+('configured (not verified remotely)' if valid else 'MISSING'))
         if not valid:missing.append(key)
-    if setting('MEDIA_HOST','tmpfiles') not in ['tmpfiles','catbox']:
-        print('MEDIA_HOST must be tmpfiles or catbox');failed=True
-    if not setting('CHIENSEMODELS_WEBHOOK_URL'):
-        print('WEBHOOK: not running/configured — install cloudflared and launch the app, or set your own HTTPS callback')
-        missing.append('CHIENSEMODELS_WEBHOOK_URL')
+    for name in ['CHINESEMODELS_PREVIEW_RESOLUTION','CHINESEMODELS_RESOLUTION']:
+        value=setting(name,'').strip().lower()
+        if value and value not in ['480p','720p','1080p']:
+            print(name+' must be one of 480p, 720p, 1080p');failed=True
     if failed:print('DEPENDENCIES NOT READY');return 1
     if missing:
-        print('LOCAL UI READY; GENERATION BLOCKED until keys and the required callback are configured.')
+        print('LOCAL UI READY; GENERATION BLOCKED until keys are configured.')
         return 2 if args.require_keys else 0
     print('LOCAL SETUP READY; provider access/balance has not been verified by this offline check.')
     return 0

@@ -115,7 +115,7 @@ def create_hd(ident:str):
         from seedance_bridge import submit_hd,wait_and_finish
         try:
             request_id=submit_hd(folder)
-            hd_jobs[ident].update(request_id=request_id,status='Generating 1080p through Chiensemodels');save()
+            hd_jobs[ident].update(request_id=request_id,status='Generating 1080p through Chinesemodels');save()
             wait_and_finish(hd,request_id,lambda s:hd_jobs[ident].update(status=s))
             hd_jobs[ident].update(state='done',status='1080p ready · original source audio restored')
         except Exception as e:hd_jobs[ident].update(state='error',status=str(e))
@@ -159,4 +159,4 @@ def resume_saved_generations():
 
 @app.get('/health')
 def health():
-    return {'status':'ok','service':'Chiensemodels Video Workflow'}
+    return {'status':'ok','service':'Chinesemodels Video Workflow'}

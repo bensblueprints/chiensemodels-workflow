@@ -1,23 +1,50 @@
 # Validation status
 
-This package is a provider-swapped rebuild of the open-source Genjustsu workflow. Read this before trusting it for billed work.
+Read this before trusting this workflow for billed work.
 
-## What is verified
+## Verified against the live provider (2026-10-26)
 
-- All Python modules compile (`python -m compileall`).
-- The local unit suite (`tests/`) covers mask-fingerprint invalidation, duplicate-submission protection, the self-contained Edit draft payload, result download/restoration dispatch, the approved-draft HD payload, rejection of missing mask frames, byte-identical original-audio restoration, primary-host retry and fallback switching, and mesh submission behavior. These tests mock every remote call.
-- The synthetic compositing check (`test_composite.py`) validates mask selection and frame alignment without any network access.
-- Every provider reference is centralized in `seedance_bridge.py` (`base_url()`, the payloads, `submit_hd`) and `.env`, so the endpoint can be corrected in one place.
+Using a real `sk-cm-…` key, read-only and non-billing calls:
 
-## What is NOT verified
+- `GET /v1/models` returned 600 models; `bytedance/seedance-2.5/reference-to-video`
+  and `kwaivgi/kling-v4.0/video-edit` are both present, as is
+  `bytedance/seedance-2.5/draft-complete`.
+- `POST /v1/generations/quote` for the Seedance edit contract returned a real
+  quote: **$10.797696 @720p** and **$21.25228 @1080p** (`{"id":"quote_…","price":…,"currency":"USD","expiresAt":…}`).
+- Resolution is validated as **lowercase**: `480p`/`720p`/`1080p` succeed,
+  uppercase returns `400 /resolution must be equal to one of the allowed values`.
+- `POST /v1/generations/quote` for `kwaivgi/kling-v4.0/video-edit` (SUMO)
+  returned `400 Generation is temporarily unavailable. Check existing tasks before
+  retrying a submission.` SUMO cannot render through this route until the provider
+  restores that channel.
 
-- **The live Chiensemodels endpoint contract.** The request/response shapes (`POST /queue`, `POST /status`, `requestId`, `status`, `result`) mirror the contract this workflow was originally built against. The Chiensemodels base URL and field names have not been confirmed against a live account and must be checked in your dashboard before the first paid submission. See `docs/CHIENSEMODELS-API.md`.
-- No live Demucs / depth / SAM / Seedance / Kling generation was run in this build.
-- No cross-platform clean install (macOS/Linux/WSL) was run in this build.
-- The `MEDIA_HOST`/fallback and mesh paths are exercised only through mocked tests here.
+No billed generation was submitted during this validation.
+
+## Verified locally
+
+- Every Python module compiles (`python -m compileall`).
+- The unit suite (`tests/`) covers mask-fingerprint invalidation, duplicate-submission
+  protection, the quote→submit edit contract, result download and audio restoration,
+  the approved-final-resolution path, reference-media upload (role, auth, HTTPS and
+  error handling), primary/fallback-free upload behavior, and mesh submission. These
+  tests mock every remote call.
+- The synthetic compositing check (`test_composite.py`) validates mask selection and
+  frame alignment with no network access.
+
+## NOT verified
+
+- No end-to-end billed edit (draft or final) has been run through this workflow.
+- No cross-platform clean install (macOS/Linux/WSL) was run.
+- `CHINESEMODELS_MODEL`, `CHINESEMODELS_PREVIEW_RESOLUTION` and
+  `CHINESEMODELS_RESOLUTION` are the intended knobs; the Kling path is untestable
+  while its channel is down.
+- The exact request shape of `bytedance/seedance-2.5/draft-complete` is not confirmed,
+  so the final pass is implemented as a second generation rather than the native hop.
 
 ## Before your first paid run
 
-1. Confirm your Chiensemodels endpoint paths, auth header and payload fields; adjust `seedance_bridge.py` and `.env` if they differ.
-2. Run one short clip end to end and verify the draft, the 1080p upgrade, and byte-for-byte original-audio restoration.
-3. Keep the callback tunnel alive for the whole job; polling is authoritative if callbacks are delayed.
+1. Confirm your balance in the Chinesemodels dashboard.
+2. Run one short clip end to end and verify the draft, the final pass, and byte-for-byte
+   original-audio restoration.
+3. Keep the server running until the preview is saved; retrieval resumes from the saved
+   response and never re-submits a paid request.
